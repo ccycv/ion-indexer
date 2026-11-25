@@ -1681,26 +1681,16 @@ func GetRequestSettings(c *fiber.Ctx, settings *Settings) index.RequestSettings 
 }
 
 func ErrorHandlerFunc(ctx *fiber.Ctx, err error) error {
-	api_key, _ := ExtractParam(ctx, "X-Api-Key", "api_key")
-	ip := ctx.IP()
-	if ips := ctx.IPs(); len(ips) > 0 {
-		ip = ips[0]
-	}
-
 	switch e := err.(type) {
 	case index.IndexError:
-		if e.Code != 404 && e.Code != 409 {
-			err_msg := err.Error()
-			err_msg = strings.ReplaceAll(err_msg, "\n", "\\n")
-			log.Printf("Code: %d Path: %s IP: %s API Key: %s Queries: %v Body: %s Error: %s",
-				e.Code, ctx.Path(), ip, api_key, ctx.Queries(), string(ctx.Body()), err_msg)
+		if e.Code >= fiber.StatusInternalServerError {
+			log.Printf("Indexer internal error on path %s (status %d)", ctx.Path(), e.Code)
+			return ctx.Status(e.Code).JSON(index.IndexError{Code: e.Code, Message: "internal server error"})
 		}
 		return ctx.Status(e.Code).JSON(e)
 	default:
-		log.Printf("Path: %s IP: %s API Key: %s Queries: %v Body: %s Error: %s", ctx.Path(), ip, api_key, ctx.Queries(), string(ctx.Body()), err.Error())
-		resp := map[string]string{}
-		resp["error"] = fmt.Sprintf("internal server error: %s", err.Error())
-		return ctx.Status(fiber.StatusInternalServerError).JSON(resp)
+		log.Printf("Indexer internal error on path %s", ctx.Path())
+		return ctx.Status(fiber.StatusInternalServerError).JSON(index.IndexError{Code: fiber.StatusInternalServerError, Message: "internal server error"})
 	}
 }
 
