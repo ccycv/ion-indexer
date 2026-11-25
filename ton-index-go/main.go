@@ -1694,6 +1694,22 @@ func ErrorHandlerFunc(ctx *fiber.Ctx, err error) error {
 	}
 }
 
+func rejectSQLControlQueryValues(c *fiber.Ctx) error {
+	var invalid bool
+	c.Request().URI().QueryArgs().VisitAll(func(_, value []byte) {
+		for _, ch := range value {
+			if ch == '\'' || ch == '\\' || ch == ';' || ch < 0x20 || ch == 0x7f {
+				invalid = true
+				return
+			}
+		}
+	})
+	if invalid {
+		return index.IndexError{Code: 422, Message: "invalid query parameter"}
+	}
+	return c.Next()
+}
+
 func ContextByAccount(repository *emulated.EmulatedTracesRepository, accounts []index.AccountAddress,
 	emulated_only bool, filter_transactions bool, use_action_index bool) (
 	*index.EmulatedTracesContext, error) {
@@ -1979,6 +1995,7 @@ func main() {
 	})
 
 	// endpoints
+	app.Use("/indexer/v3/", rejectSQLControlQueryValues)
 	app.Use("/indexer/v3/", func(c *fiber.Ctx) error {
 		c.Accepts("application/json")
 		start := time.Now()
