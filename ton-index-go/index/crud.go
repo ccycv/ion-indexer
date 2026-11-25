@@ -2361,7 +2361,7 @@ func (db *DbClient) QueryTransactions(
 		log.Println("Debug query:", query)
 	}
 	if err != nil {
-		return nil, nil, IndexError{Code: 500, Message: err.Error()}
+		return nil, nil, err
 	}
 
 	// read data
@@ -2491,7 +2491,7 @@ func (db *DbClient) QueryMessages(
 		log.Println("Debug query:", query)
 	}
 	if err != nil {
-		return nil, nil, nil, IndexError{Code: 500, Message: err.Error()}
+		return nil, nil, nil, err
 	}
 
 	// read data

@@ -1,6 +1,7 @@
 package index
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -27,5 +28,16 @@ func TestMessageDirectionAllowsDocumentedValues(t *testing.T) {
 		if err := validateMessageDirection(&direction); err != nil {
 			t.Fatalf("direction %q rejected: %v", direction, err)
 		}
+	}
+}
+
+func TestInvalidDirectionPreservesClientError(t *testing.T) {
+	direction := "in' OR 1=1 --"
+	settings := RequestSettings{DefaultLimit: 10, MaxLimit: 100}
+	db := &DbClient{}
+	_, _, _, err := db.QueryMessages(MessageRequest{Direction: &direction}, UtimeRequest{}, LtRequest{}, LimitRequest{}, settings)
+	var indexErr IndexError
+	if !errors.As(err, &indexErr) || indexErr.Code != 422 {
+		t.Fatalf("QueryMessages error = %v, want 422", err)
 	}
 }
